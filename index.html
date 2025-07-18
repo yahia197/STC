@@ -102,6 +102,22 @@
   <button onclick="parseMultipleAgents()" class="glass-button py-2 px-4 rounded-lg transition duration-200">Save Agents Data</button>
 </div>
 
+<div class="mb-6 flex flex-wrap gap-4">
+  <button onclick="toggleAllAgentsSection()" class="glass-button py-2 px-4 rounded-lg transition duration-200">
+    View All Results
+  </button>
+  <button onclick="copyAllResults()" class="glass-button py-2 px-4 rounded-lg transition duration-200">
+    Copy All Results
+  </button>
+</div>
+
+<div id="all-agents-section" class="hidden glass-card p-6 mb-8 max-w-4xl mx-auto">
+  <h2 class="text-xl font-semibold text-white mb-4">All Agents Overview</h2>
+  <div id="all-agents-results" class="space-y-4">
+    <!-- Agent cards will be added here dynamically -->
+  </div>
+</div>
+
 <!-- Hidden by default -->
 <div id="show-paste-again" class="mb-6 hidden">
   <button onclick="reopenPasteSection()" class="glass-button py-2 px-4 rounded-lg transition duration-200">Edit Agents Data</button>
@@ -243,6 +259,11 @@
       return sum / values.length;
     }
 
+    function toggleAllAgentsSection() {
+  const section = document.getElementById("all-agents-section");
+  section.classList.toggle("hidden");
+}
+
     function calculateNeeded(currentAvg, target, count) {
       if (currentAvg >= target) return 0;
       let currentTotal = currentAvg * count;
@@ -270,6 +291,85 @@
         card.classList.remove('needs-surveys');
       }
     }
+
+function showAllAgentsResults() {
+  const container = document.getElementById("all-agents-results");
+  container.innerHTML = "";
+
+  Object.keys(agents).forEach(name => {
+    const { csat, fcr, nps, count } = agents[name];
+
+    const csatNeeded = calculateNeeded(csat, TARGETS.csat, count);
+    const fcrNeeded = calculateNeeded(fcr, TARGETS.fcr, count);
+    const npsNeeded = calculateNeeded(nps, TARGETS.nps, count);
+
+    // Find which metric has the highest "needed" value
+    let topMetric = "CSAT";
+    let topNeeded = csatNeeded;
+    let topLabel = "5s";
+
+    if (fcrNeeded > topNeeded) {
+      topMetric = "FCR";
+      topNeeded = fcrNeeded;
+      topLabel = "1s";
+    }
+    if (npsNeeded > topNeeded) {
+      topMetric = "NPS";
+      topNeeded = npsNeeded;
+      topLabel = "1s";
+    }
+
+    const agentCard = document.createElement("div");
+    agentCard.className = "rounded-lg p-4 border border-gray-600 bg-white bg-opacity-5";
+
+    agentCard.innerHTML = `
+      <h3 class="text-lg font-medium text-white mb-2">${name}</h3>
+      <p class="text-sm text-gray-300">
+        Top Need: <span class="font-bold text-white">${topMetric}</span> → Needs 
+        <span class="font-bold">${topNeeded}</span> more ${topLabel}
+      </p>
+      <p class="text-sm text-gray-300">Survey Count: <span class="font-bold text-white">${count}</span></p>
+    `;
+
+    container.appendChild(agentCard);
+  });
+}
+
+function copyAllResults() {
+  let text = "";
+  Object.keys(agents).forEach(name => {
+    const { csat, fcr, nps, count } = agents[name];
+    const csatNeeded = calculateNeeded(csat, TARGETS.csat, count);
+    const fcrNeeded = calculateNeeded(fcr, TARGETS.fcr, count);
+    const npsNeeded = calculateNeeded(nps, TARGETS.nps, count);
+
+    // Find the metric with the highest needed value
+    let topMetric = "CSAT";
+    let topNeeded = csatNeeded;
+    let topLabel = "5s";
+
+    if (fcrNeeded > topNeeded) {
+      topMetric = "FCR";
+      topNeeded = fcrNeeded;
+      topLabel = "1s";
+    }
+    if (npsNeeded > topNeeded) {
+      topMetric = "NPS";
+      topNeeded = npsNeeded;
+      topLabel = "1s";
+    }
+
+    text += `${name}:\n`;
+    text += `Need: ${topMetric} → ${topNeeded}\n`;
+    text += `Survey Count: ${count}\n\n`;
+  });
+
+  navigator.clipboard.writeText(text).then(() => {
+    alert("All agent results copied to clipboard!");
+  }).catch(err => {
+    alert("Failed to copy: " + err);
+  });
+}
 
     function updateUI() {
       const csatAvg = calculateAverage(surveyData.csat);
@@ -359,6 +459,8 @@
   // Hide paste area
   document.getElementById("paste-section").classList.add("hidden");
   document.getElementById("show-paste-again").classList.remove("hidden");
+
+showAllAgentsResults(); // ✅ ADD THIS LINE, DO NOT REPLACE populateAgentDropdown()
 }
 
 function reopenPasteSection() {
